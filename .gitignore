@@ -1,0 +1,21 @@
+# macOS metadata
+.DS_Store
+
+# Original evidence stays private
+Evidence/Raw/
+
+# Credentials and environment variables
+.env
+.env.*
+*.pem
+*.key
+
+# Terraform local data and state (may contain sensitive values)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+

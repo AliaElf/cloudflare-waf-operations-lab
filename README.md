@@ -6,6 +6,28 @@ The lab follows a small web application from onboarding through policy configura
 
 ---
 
+## What This Lab Demonstrates
+
+### Cloudflare WAF Operations
+
+- Onboarded the application
+- Configured XSS and SQLi rules
+- Configured rate limiting
+- Tested allowed and blocked traffic
+- Tuned the XSS rule after identifying a false positive
+- Used Burp Suite for controlled testing
+
+### Terraform + Cloudflare WAF
+
+- Installed and configured Terraform
+- Authenticated securely to Cloudflare
+- Represented a WAF rule as code
+- Previewed the change with `terraform plan`
+- Deployed and verified the change
+- Demonstrated Infrastructure as Code (IaC) change management
+
+---
+
 ## Environment
 
 - WAF and security analytics: Cloudflare

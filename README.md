@@ -1,6 +1,6 @@
 # Cloudflare WAF Security Operations Lab
 
-This project shows how I protected a test web application with Cloudflare and practiced common WAF operations. I created and tested security rules, reviewed the resulting events, corrected a false positive, and used Terraform to manage a WAF rule as code.
+This project shows how I protected a test web application with Cloudflare and practiced common WAF operations. I created and tested several security rules, reviewed the resulting events, investigated and corrected false-positive blocks, and used Terraform to manage the Cloudflare WAF ruleset as code.
 
 All testing was authorized and performed only against my own lab application.
 

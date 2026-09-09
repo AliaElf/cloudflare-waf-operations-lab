@@ -4,6 +4,9 @@
 # Original evidence stays private
 Evidence/Raw/
 
+# Exclude the Burp welcome-page demo because it displays example credentials
+Evidence/Polished/09-burp-suite/45-burp-suite-community-installed.png
+
 # Credentials and environment variables
 .env
 .env.*
@@ -18,4 +21,3 @@ Evidence/Raw/
 *.tfvars.json
 crash.log
 crash.*.log
-

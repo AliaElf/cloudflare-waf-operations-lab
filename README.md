@@ -1,8 +1,8 @@
 # Cloudflare WAF Security Operations Lab
 
-This project demonstrates an end-to-end Web Application Firewall (WAF) operations workflow using Cloudflare, Burp Suite Community Edition, and Terraform, including cross-site scripting (XSS) and SQL injection (SQLi) detection, blocking, investigation, and rule tuning.
+This project shows how I protected a test web application with Cloudflare and practiced common WAF operations. I created and tested security rules, reviewed the resulting events, corrected a false positive, and used Terraform to manage a WAF rule as code.
 
-The lab follows a small web application from onboarding through policy configuration, security testing, event investigation, false-positive tuning, rate limiting, and Infrastructure as Code (IaC) management. All security tests were authorized and performed only against the lab application.
+All testing was authorized and performed only against my own lab application.
 
 ---
 
@@ -30,31 +30,30 @@ The lab follows a small web application from onboarding through policy configura
 
 ## Environment
 
-- WAF and security analytics: Cloudflare
-- Test application: Python HTTP server
-- Public hostname: `app.aliawaflab.com`
-- Secure application publishing: Cloudflare Tunnel
-- HTTP testing: Burp Suite Community Edition
-- Infrastructure as Code: Terraform with the Cloudflare provider
-- Development environment: Visual Studio Code on macOS
+- Cloudflare WAF and Security Analytics
+- Local test web application
+- Cloudflare Tunnel
+- Burp Suite Community Edition
+- Terraform with the Cloudflare provider
+- Visual Studio Code on macOS
 
 ---
 
-## Project Architecture
+## How the Lab Works
 
 ```text
-Browser / Burp Suite
+Browser or Burp Suite
         |
         v
 Cloudflare DNS, Tunnel, and WAF
         |
         v
-Local Python application (127.0.0.1:8000)
+Local test application
 
-Terraform ---> Cloudflare API ---> Custom WAF ruleset
+Terraform ---> Cloudflare API ---> WAF rules
 ```
 
-The origin application listens only on localhost. Cloudflare Tunnel publishes it through the lab hostname so requests pass through Cloudflare's security controls before reaching the application.
+Cloudflare Tunnel made the local application available at `app.aliawaflab.com`. This allowed requests to pass through Cloudflare before reaching the application.
 
 ---
 
@@ -62,11 +61,9 @@ The origin application listens only on localhost. Cloudflare Tunnel publishes it
 
 ### Phase 1 – Domain Setup
 
-The `aliawaflab.com` domain was registered and activated in Cloudflare. This provided the DNS zone used for the protected application and later Terraform automation.
+I registered `aliawaflab.com` and confirmed that Cloudflare was protecting the domain.
 
-📸 Evidence:
-
-- [View domain setup screenshots](Evidence/Polished/01-domain-setup)
+📸 [View domain setup screenshots](Evidence/Polished/01-domain-setup)
 
 ![Cloudflare domain active](Evidence/Polished/01-domain-setup/03-cloudflare-domain-active.png)
 
@@ -74,17 +71,11 @@ The `aliawaflab.com` domain was registered and activated in Cloudflare. This pro
 
 ### Phase 2 – Application Onboarding
 
-A safe Python search application was created locally and validated with a benign request. Cloudflare Tunnel was then connected, and `app.aliawaflab.com` was routed to the local service at `http://127.0.0.1:8000`.
+I started a simple local test application and checked that it worked. I then used Cloudflare Tunnel to publish it at `app.aliawaflab.com`.
 
-The public hostname was tested to confirm that the application was reachable through Cloudflare.
+📄 [View the test application](app/app.py)
 
-📄 Application:
-
-- [View the Python test application](app/app.py)
-
-📸 Evidence:
-
-- [View application onboarding screenshots](Evidence/Polished/02-application-onboarding)
+📸 [View application onboarding screenshots](Evidence/Polished/02-application-onboarding)
 
 ![Cloudflare protection confirmed](Evidence/Polished/02-application-onboarding/09-cloudflare-domain-protection-confirmed.png)
 
@@ -92,149 +83,115 @@ The public hostname was tested to confirm that the application was reachable thr
 
 ### Phase 3 – WAF Configuration
 
-Cloudflare's security-rule interface and available managed protections were reviewed. A custom XSS rule was then configured for the lab hostname and `/search` path.
+I reviewed Cloudflare's security settings and created a custom rule for an XSS test pattern sent to the application's search page.
 
-The rule initially blocked requests whose query string matched the selected XSS test pattern.
-
-📸 Evidence:
-
-- [View WAF configuration screenshots](Evidence/Polished/03-waf-configuration)
+📸 [View WAF configuration screenshots](Evidence/Polished/03-waf-configuration)
 
 ![Custom XSS rule active](Evidence/Polished/03-waf-configuration/16-custom-xss-rule-active-before-testing.png)
 
 ---
 
-### Phase 4 – XSS Security Testing
+### Phase 4 – XSS Testing
 
-A benign search was submitted first to establish expected application behavior. An authorized XSS test payload was then submitted to the same endpoint.
+I first sent a normal search to confirm that ordinary traffic worked. I then sent an authorized XSS test pattern. Cloudflare blocked the test request and recorded a security event.
 
-Cloudflare returned a block page, while the custom rule's event counter confirmed that the request had triggered the control.
-
-📸 Evidence:
-
-- [View security testing screenshots](Evidence/Polished/04-security-testing)
+📸 [View XSS testing screenshots](Evidence/Polished/04-security-testing)
 
 ![XSS request blocked](Evidence/Polished/04-security-testing/19-xss-test-request-blocked.png)
 
 ---
 
-### Phase 5 – Security Event Investigation
+### Phase 5 – Event Investigation
 
-The XSS event was investigated in Cloudflare Security Analytics. The review correlated the action, rule, hostname, path, HTTP method, query string, and request metadata to confirm why the request was blocked.
+I opened the XSS event in Cloudflare and reviewed the rule, action, hostname, path, request method, query string, and other request details. These details confirmed why the request was blocked.
 
-The activity was identified as authorized lab testing, and no application compromise occurred.
+📄 [View the incident report](docs/incident-investigation.md)
 
-📄 Incident report:
+📸 [View event investigation screenshots](Evidence/Polished/05-event-analysis)
 
-- [WAF Incident Investigation](docs/incident-investigation.md)
-
-📸 Evidence:
-
-- [View event-analysis screenshots](Evidence/Polished/05-event-analysis)
-
-![Expanded XSS event investigation](Evidence/Polished/05-event-analysis/22-xss-event-expanded-investigation.png)
+![Expanded XSS event](Evidence/Polished/05-event-analysis/22-xss-event-expanded-investigation.png)
 
 ---
 
-### Phase 6 – False-Positive Analysis and Rule Tuning
+### Phase 6 – False Positive and Rule Tuning
 
-The benign search term `javascript fundamentals` was blocked because the initial XSS condition was too broad. The event was reviewed and classified as a false positive.
+The first XSS rule also blocked the normal search `javascript fundamentals` because it matched the broad word `script`. I made the rule more specific and tested it again.
 
-The rule was tuned to look for the URL-encoded `<script>` opening tag instead of the general word `script`. Validation confirmed both outcomes:
+After the change:
 
-- The benign JavaScript search was allowed after tuning.
-- The XSS test payload continued to be blocked.
+- The normal JavaScript search was allowed.
+- The XSS test pattern was still blocked.
 
-📸 Evidence:
+📸 [View rule-tuning screenshots](Evidence/Polished/06-rule-tuning)
 
-- [View rule-tuning screenshots](Evidence/Polished/06-rule-tuning)
+![False positive before tuning](Evidence/Polished/06-rule-tuning/24-false-positive-benign-search-blocked.png)
 
-![False-positive request blocked](Evidence/Polished/06-rule-tuning/24-false-positive-benign-search-blocked.png)
-
-![Benign request allowed after tuning](Evidence/Polished/06-rule-tuning/27-benign-javascript-search-allowed-after-tuning.png)
+![Normal request allowed after tuning](Evidence/Polished/06-rule-tuning/27-benign-javascript-search-allowed-after-tuning.png)
 
 ---
 
-### Phase 7 – SQL Injection Operations
+### Phase 7 – SQL Injection Testing
 
-A second custom WAF rule was configured to detect the authorized `UNION SELECT` test pattern on the `/search` endpoint.
+I created a second custom rule for an authorized `UNION SELECT` SQL injection test pattern. A normal SQL-related search was allowed, while the test pattern was blocked. I then reviewed the matching Cloudflare event.
 
-A benign SQL-related search was allowed, while the simulated SQL injection request was blocked. The corresponding Cloudflare event was expanded and reviewed to verify the rule match and request details.
-
-📸 Evidence:
-
-- [View SQL injection operations screenshots](Evidence/Polished/07-sqli-operations)
+📸 [View SQL injection screenshots](Evidence/Polished/07-sqli-operations)
 
 ![SQL injection request blocked](Evidence/Polished/07-sqli-operations/36-sqli-union-select-request-blocked.png)
 
-![SQL injection event investigation](Evidence/Polished/07-sqli-operations/38-sqli-event-expanded-investigation.png)
+![SQL injection event](Evidence/Polished/07-sqli-operations/38-sqli-event-expanded-investigation.png)
 
 ---
 
 ### Phase 8 – Rate Limiting
 
-A rate-limiting rule was configured for requests to `/search`, grouped by client IP:
+I created a rate-limiting rule for the search page. It allowed up to five requests in ten seconds from one IP address and temporarily blocked additional requests for ten seconds.
 
-- Threshold: 5 requests in 10 seconds
-- Action: Block
-- Mitigation duration: 10 seconds
+When I exceeded the limit, Cloudflare returned HTTP `429 Too Many Requests` and recorded the event.
 
-Repeated authorized test requests exceeded the threshold. Cloudflare returned HTTP `429 Too Many Requests`, and the rate-limiting event was confirmed in Security Analytics.
+📸 [View rate-limiting screenshots](Evidence/Polished/08-rate-limiting)
 
-📸 Evidence:
-
-- [View rate-limiting screenshots](Evidence/Polished/08-rate-limiting)
-
-![Rate-limit threshold triggered](Evidence/Polished/08-rate-limiting/42-rate-limit-threshold-triggered.png)
+![Rate limit triggered](Evidence/Polished/08-rate-limiting/42-rate-limit-threshold-triggered.png)
 
 ---
 
-### Phase 9 – Burp Suite Validation and Event Correlation
+### Phase 9 – Burp Suite Testing
 
-Burp Suite Community Edition was used to capture application traffic and replay controlled requests with Repeater.
+I used Burp Suite to view application traffic and resend controlled requests with Repeater. I compared the responses with the related Cloudflare events.
 
-Testing confirmed the expected outcomes:
+The results were:
 
-- Benign request: HTTP `200 OK`
-- XSS test request: HTTP `403 Forbidden`
-- SQL injection test request: HTTP `403 Forbidden`
-- Rate-limit test: HTTP `429 Too Many Requests` after the threshold was exceeded
+- Normal request: HTTP `200 OK`
+- XSS test: HTTP `403 Forbidden`
+- SQL injection test: HTTP `403 Forbidden`
+- Too many requests: HTTP `429 Too Many Requests`
 
-The Burp requests were correlated with the matching XSS, SQLi, and rate-limit events in Cloudflare.
+📸 [View Burp Suite screenshots](Evidence/Polished/09-burp-suite)
 
-📸 Evidence:
+![Burp XSS test blocked](Evidence/Polished/09-burp-suite/48-burp-repeater-xss-request-403-response.png)
 
-- [View Burp Suite screenshots](Evidence/Polished/09-burp-suite)
-
-![Burp XSS request blocked](Evidence/Polished/09-burp-suite/48-burp-repeater-xss-request-403-response.png)
-
-![Burp SQLi request blocked](Evidence/Polished/09-burp-suite/49-burp-repeater-sqli-request-403-response.png)
+![Burp SQLi test blocked](Evidence/Polished/09-burp-suite/49-burp-repeater-sqli-request-403-response.png)
 
 ---
 
-### Phase 10 – Terraform and Cloudflare WAF Automation
+### Phase 10 – Terraform WAF Automation
 
-Terraform was initialized with the Cloudflare provider. The existing custom WAF ruleset was imported into Terraform state so it could be managed without recreating the live controls.
+I used Terraform to place the existing Cloudflare custom WAF ruleset under code-based management. I then added a small `terraform-test` blocking rule.
 
-The workflow included:
+The basic workflow was:
 
-1. Initializing the provider with `terraform init`.
-2. Formatting and validating the configuration.
-3. Running a read-only plan and refresh-only state update.
-4. Importing the existing Cloudflare custom ruleset.
-5. Reviewing a plan showing `0 to add, 1 to change, 0 to destroy`.
-6. Applying a new `terraform-test` blocking rule.
-7. Confirming the rule in Cloudflare and validating it with a blocked request and security event.
+1. Initialize Terraform and the Cloudflare provider.
+2. Check and format the configuration.
+3. Import the existing Cloudflare ruleset.
+4. Use `terraform plan` to preview the proposed change.
+5. Review and apply the change.
+6. Confirm the new rule in Cloudflare.
+7. Send a matching request and confirm that it was blocked and recorded.
 
-Credentials and identifiers are supplied through environment variables and are not stored in the repository. Terraform state is excluded because it may contain sensitive infrastructure data.
+The API token was entered through an environment variable and was not saved in the repository. Terraform state files were also excluded because they can contain sensitive information.
 
-📄 Terraform configuration:
+📄 [View the Terraform configuration](terraform)
 
-- [View Terraform files](terraform)
-
-📸 Evidence:
-
-- [View Terraform automation screenshots](Evidence/Polished/10-terraform-automation)
+📸 [View Terraform screenshots](Evidence/Polished/10-terraform-automation)
 
 ![Terraform apply completed](Evidence/Polished/10-terraform-automation/59-terraform-waf-rule-apply-success.png)
 
@@ -242,32 +199,30 @@ Credentials and identifiers are supplied through environment variables and are n
 
 ---
 
-## Security and Privacy Controls
+## Security and Privacy
 
-- Testing was limited to the lab-owned hostname and application.
-- User-supplied search text is HTML-escaped by the Python application.
-- Cloudflare API credentials are provided through environment variables.
-- API tokens, Terraform state, `.tfvars` files, and original raw evidence are excluded from Git.
-- Public screenshots are sanitized to remove personal account information, local usernames, public IP addresses, and ISP information.
+- I tested only the application and domain created for this lab.
+- The test application safely displayed submitted search text.
+- The Cloudflare API token was not stored in the project.
+- API tokens, Terraform state, variable-value files, and raw evidence were excluded from GitHub.
+- Public screenshots were checked and sanitized to hide private information.
 
 ---
 
-## Key Skills Demonstrated
+## Skills Practiced
 
-- Cloudflare application onboarding and Tunnel configuration
-- WAF policy and custom-rule implementation
-- HTTP traffic and security-event analysis
-- XSS and SQL injection alert investigation
-- False-positive identification and rule tuning
-- Rate-limit configuration and validation
-- Burp Suite Proxy, HTTP history, and Repeater testing
-- Security-event correlation across testing and WAF telemetry
-- Terraform initialization, planning, import, and apply workflows
-- Cloudflare WAF management through Infrastructure as Code
-- Evidence handling, incident documentation, and credential hygiene
+- Onboarding an application to Cloudflare
+- Creating and testing custom WAF rules
+- Reviewing HTTP traffic and Cloudflare security events
+- Investigating XSS and SQL injection alerts
+- Finding and correcting a false positive
+- Configuring and testing rate limiting
+- Using Burp Suite to resend controlled requests
+- Using Terraform to preview and apply a WAF change
+- Documenting the investigation and protecting sensitive information
 
 ---
 
 ## Important Note
 
-This repository documents a controlled educational lab. The payloads shown here were used only against infrastructure owned and authorized for this project.
+This was a controlled educational lab. All test patterns were used only against infrastructure that I owned and was authorized to test.

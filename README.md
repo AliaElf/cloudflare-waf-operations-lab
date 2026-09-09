@@ -26,6 +26,15 @@ All testing was authorized and performed only against my own lab application.
 - Deployed and verified the change
 - Demonstrated Infrastructure as Code (IaC) change management
 
+### WAF Incident Investigation
+
+- Used Cloudflare security events and exported JSON evidence
+- Analyzed XSS, SQLi, and rate-limit alerts
+- Documented what happened, including root cause, impact, and remediation
+- Recorded the investigation steps in chronological order
+- Created a WAF incident analyst report
+- Correlated Burp Suite requests and responses with Cloudflare events
+
 ---
 
 ## Environment
